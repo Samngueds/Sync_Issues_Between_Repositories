@@ -1,5 +1,6 @@
 require 'octokit'
 require 'fileutils'
+require 'date'
 
 # Recebe os tokens e nomes dos repositórios do ambiente
 public_repo_token = ENV['PUBLIC_REPO_TOKEN']
@@ -48,15 +49,42 @@ end
 def create_issue_from_file(file_path, repo, token)
   if File.exist?(file_path)
     puts "Arquivo de issue encontrado: #{file_path}"
-    File.open(file_path, 'r') do |file|
-      title = file.readline.strip
-      body = file.read.strip
-      client = Octokit::Client.new(access_token: token)
-      create_issue(client, repo, title, body)
-    end
+    title, body = parse_issue_file(file_path)
+    client = Octokit::Client.new(access_token: token)
+    create_issue(client, repo, title, body)
   else
     puts "Arquivo de issue não encontrado. Somente sincronização será realizada."
   end
+end
+
+def parse_issue_file(file_path)
+  title = nil
+  body = nil
+  File.open(file_path, 'r') do |file|
+    lines = file.readlines
+    if lines.any?
+      title_line = lines.find { |line| line.start_with?('### ') }
+      title = title_line ? title_line.sub('### ', '').strip : 'Sem título'
+      body = lines[lines.index(title_line) + 1..-1].join.strip if title_line
+    end
+  end
+  [title, body]
+end
+
+def write_log(issues_count_public, issues_count_private)
+  timestamp = DateTime.now.strftime('%Y-%m-%d %H:%M:%S')
+  log_content = <<~LOG
+    Log de Sincronização
+    Data e Hora: #{timestamp}
+    Issues no Repositório Público: #{issues_count_public}
+    Issues no Repositório Privado: #{issues_count_private}
+  LOG
+
+  File.open('issue_sync_log.md', 'w') do |file|
+    file.write(log_content)
+  end
+
+  puts "Log de sincronização criado."
 end
 
 puts "Iniciando sincronização de issues..."
@@ -73,7 +101,12 @@ repo_token = gets.chomp
 create_issue_from_file(issue_file_path, target_repo, repo_token)
 
 # Sincroniza do repositório público para o repositório privado (central)
+public_issues = fetch_issues(public_client, public_repo)
+private_issues = fetch_issues(private_client, private_repo)
 synchronize_issues(public_client, public_repo, private_client, private_repo)
 
 # Sincroniza do repositório privado (central) para o repositório público
 synchronize_issues(private_client, private_repo, public_client, public_repo)
+
+# Cria o log de sincronização
+write_log(public_issues.size, private_issues.size)
