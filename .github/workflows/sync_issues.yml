@@ -1,0 +1,34 @@
+name: Sync Issues between Public, Private, and Central Repos
+
+on:
+  schedule:
+    - cron: '0 * * * *' # A cada 1 hora
+  workflow_dispatch: # Permite rodar manualmente o workflow
+
+jobs:
+  sync_issues:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.0' # Escolha a versão do Ruby que deseja
+
+    - name: Install dependencies
+      run: |
+        gem install octokit
+
+    - name: Sync Issues
+      env:
+        PRIVATE_REPO_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }} # Token do repositório privado
+        PUBLIC_REPO_TOKEN: ${{ secrets.PUBLIC_REPO_TOKEN }}   # Token do repositório público
+        CENTRAL_REPO_TOKEN: ${{ secrets.CENTRAL_REPO_TOKEN }} # Token do repositório central de issues
+        PRIVATE_REPO: ${{ secrets.PRIVATE_REPO }}             # Nome do repositório privado (ex: "usuario/repo_privado")
+        PUBLIC_REPO: ${{ secrets.PUBLIC_REPO }}               # Nome do repositório público (ex: "usuario/repo_publico")
+        CENTRAL_REPO: ${{ secrets.CENTRAL_REPO }}             # Nome do repositório central de issues (ex: "usuario/repo_central")
+      run: |
+        ruby sync_issues.rb
