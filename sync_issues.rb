@@ -92,13 +92,8 @@ puts "Iniciando sincronização de issues..."
 # Caminho para o arquivo de issue
 issue_file_path = 'issue.md'
 
-# Verifica se o arquivo de issue existe e cria a issue se necessário
-print "Digite o nome do repositório para criar a issue (ex: 'usuario/repo'): "
-target_repo = gets.chomp
-print "Digite o token para o repositório escolhido: "
-repo_token = gets.chomp
-
-create_issue_from_file(issue_file_path, target_repo, repo_token)
+# Cria a issue no repositório privado se o arquivo de issue existir
+create_issue_from_file(issue_file_path, private_repo, private_repo_token)
 
 # Sincroniza do repositório público para o repositório privado (central)
 public_issues = fetch_issues(public_client, public_repo)
