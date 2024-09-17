@@ -1,4 +1,5 @@
 require 'octokit'
+require 'fileutils'
 
 # Recebe os tokens e nomes dos repositórios do ambiente
 public_repo_token = ENV['PUBLIC_REPO_TOKEN']
@@ -44,30 +45,32 @@ def synchronize_issues(source_client, source_repo, target_client, target_repo)
   puts "Sincronização concluída entre #{source_repo} e #{target_repo}."
 end
 
-def prompt_for_issue_details
-  print "Digite o título da issue: "
-  title = gets.chomp
-  print "Digite o corpo da issue: "
-  body = gets.chomp
-  { title: title, body: body }
+def create_issue_from_file(file_path, repo, token)
+  if File.exist?(file_path)
+    puts "Arquivo de issue encontrado: #{file_path}"
+    File.open(file_path, 'r') do |file|
+      title = file.readline.strip
+      body = file.read.strip
+      client = Octokit::Client.new(access_token: token)
+      create_issue(client, repo, title, body)
+    end
+  else
+    puts "Arquivo de issue não encontrado. Somente sincronização será realizada."
+  end
 end
 
 puts "Iniciando sincronização de issues..."
 
-# Pergunta ao usuário se ele deseja criar uma issue
-print "Deseja criar uma issue? (s/n): "
-create_issue_option = gets.chomp.downcase
+# Caminho para o arquivo de issue
+issue_file_path = 'issue.md'
 
-if create_issue_option == 's'
-  details = prompt_for_issue_details
-  # Escolha em qual repositório criar a issue
-  print "Digite o nome do repositório para criar a issue (ex: 'usuario/repo'): "
-  target_repo = gets.chomp
-  print "Digite o token para o repositório escolhido: "
-  repo_token = gets.chomp
-  repo_client = Octokit::Client.new(access_token: repo_token)
-  create_issue(repo_client, target_repo, details[:title], details[:body])
-end
+# Verifica se o arquivo de issue existe e cria a issue se necessário
+print "Digite o nome do repositório para criar a issue (ex: 'usuario/repo'): "
+target_repo = gets.chomp
+print "Digite o token para o repositório escolhido: "
+repo_token = gets.chomp
+
+create_issue_from_file(issue_file_path, target_repo, repo_token)
 
 # Sincroniza do repositório público para o repositório privado (central)
 synchronize_issues(public_client, public_repo, private_client, private_repo)
